@@ -46,7 +46,14 @@ open class HKView: UIView {
         }
     }
     var position: AVCaptureDevice.Position = .front
-    var currentSampleBuffer: CMSampleBuffer?
+    public var newSampleBuffer: ((_ currentSampleBuffer: CMSampleBuffer)->())? = nil
+    var currentSampleBuffer: CMSampleBuffer? {
+       didSet {
+           if let currentSampleBuffer = currentSampleBuffer {
+               newSampleBuffer?(currentSampleBuffer)
+           }
+       }
+    }
 
     private weak var currentStream: NetStream? {
         didSet {
@@ -97,6 +104,7 @@ open class HKView: UIView {
 extension HKView: NetStreamRenderer {
     // MARK: NetStreamRenderer
     func enqueue(_ sampleBuffer: CMSampleBuffer?) {
+        currentSampleBuffer = sampleBuffer
     }
 }
 
