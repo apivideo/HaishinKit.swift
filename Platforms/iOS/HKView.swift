@@ -114,7 +114,7 @@ extension HKView: NetStreamDrawable {
         }
     }
 
-    func enqueue(_ sampleBuffer: CMSampleBuffer?) {
+    public func enqueue(_ sampleBuffer: CMSampleBuffer?) {
         currentSampleBuffer = sampleBuffer
     }
 }
