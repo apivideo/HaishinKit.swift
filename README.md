@@ -108,7 +108,7 @@ source 'https://github.com/CocoaPods/Specs.git'
 use_frameworks!
 
 def import_pods
-    pod 'ApiVideoHaishinKit', '~> 1.3.0.1
+    pod 'ApiVideoHaishinKit', '~> 1.3.0.2
 end
 
 target 'Your Target'  do
@@ -118,7 +118,7 @@ end
 ```
 ### Carthage
 ```
-github "shogo4405/ApiVideoHaishinKit.swift" ~> 1.3.0.1
+github "shogo4405/ApiVideoHaishinKit.swift" ~> 1.3.0.2
 ```
 ### Swift Package Manager
 ```
