@@ -4,25 +4,6 @@ import Photos
 import UIKit
 import VideoToolbox
 
-final class ExampleRecorderDelegate: DefaultAVRecorderDelegate {
-    static let `default` = ExampleRecorderDelegate()
-
-    override func didFinishWriting(_ recorder: AVRecorder) {
-        guard let writer: AVAssetWriter = recorder.writer else {
-            return
-        }
-        PHPhotoLibrary.shared().performChanges({() -> Void in
-            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: writer.outputURL)
-        }, completionHandler: { _, error -> Void in
-            do {
-                try FileManager.default.removeItem(at: writer.outputURL)
-            } catch {
-                print(error)
-            }
-        })
-    }
-}
-
 final class LiveViewController: UIViewController {
     private static let maxRetryCount: Int = 5
 
@@ -56,18 +37,20 @@ final class LiveViewController: UIViewController {
             .sessionPreset: AVCaptureSession.Preset.hd1280x720,
             .continuousAutofocus: true,
             .continuousExposure: true
-            // .preferredVideoStabilizationMode: AVCaptureVideoStabilizationMode.auto
+            // .preferredVideoStabilizationMode: AVCaptureVideoStabilizationMode.cinematic
         ]
         rtmpStream.videoSettings = [
             .width: 720,
             .height: 1280
         ]
-        rtmpStream.mixer.recorder.delegate = ExampleRecorderDelegate.shared
+        rtmpStream.mixer.recorder.delegate = self
 
         videoBitrateSlider?.value = Float(RTMPStream.defaultVideoBitrate) / 1000
         audioBitrateSlider?.value = Float(RTMPStream.defaultAudioBitrate) / 1000
 
         NotificationCenter.default.addObserver(self, selector: #selector(on(_:)), name: UIDevice.orientationDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didEnterBackground(_:)), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(didBecomeActive(_:)), name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -90,6 +73,7 @@ final class LiveViewController: UIViewController {
         super.viewWillDisappear(animated)
         rtmpStream.removeObserver(self, forKeyPath: "currentFPS")
         rtmpStream.close()
+        // swiftlint:disable notification_center_detachment
         NotificationCenter.default.removeObserver(self)
     }
 
@@ -157,7 +141,7 @@ final class LiveViewController: UIViewController {
         case RTMPConnection.Code.connectSuccess.rawValue:
             retryCount = 0
             rtmpStream.publish(Preference.defaultInstance.streamName!)
-            // sharedObject!.connect(rtmpConnection)
+        // sharedObject!.connect(rtmpConnection)
         case RTMPConnection.Code.connectFailed.rawValue, RTMPConnection.Code.connectClosed.rawValue:
             guard retryCount <= LiveViewController.maxRetryCount else {
                 return
@@ -232,9 +216,41 @@ final class LiveViewController: UIViewController {
         rtmpStream.orientation = orientation
     }
 
+    @objc
+    private func didEnterBackground(_ notification: Notification) {
+        rtmpStream.attachCamera(nil)
+    }
+
+    @objc
+    private func didBecomeActive(_ notification: Notification) {
+        rtmpStream.attachCamera(DeviceUtil.device(withPosition: currentPosition)) { error in
+            logger.warn(error.description)
+        }
+    }
+
+    // swiftlint:disable block_based_kvo
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         if Thread.isMainThread {
             currentFPSLabel?.text = "\(rtmpStream.currentFPS)"
         }
+    }
+}
+
+extension LiveViewController: AVRecorderDelegate {
+    // MARK: AVRecorderDelegate
+    func recorder(_ recorder: AVRecorder, errorOccured error: AVRecorder.Error) {
+        logger.error(error)
+    }
+
+    func recorder(_ recorder: AVRecorder, finishWriting writer: AVAssetWriter) {
+        PHPhotoLibrary.shared().performChanges({() -> Void in
+            PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: writer.outputURL)
+        }, completionHandler: { _, error -> Void in
+            do {
+                try FileManager.default.removeItem(at: writer.outputURL)
+            } catch {
+                print(error)
+            }
+        })
     }
 }

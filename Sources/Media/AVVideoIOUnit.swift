@@ -18,13 +18,13 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
     }
 
     #if os(iOS) || os(macOS)
-    weak var renderer: NetStreamRenderer? {
+    weak var drawable: NetStreamDrawable? {
         didSet {
-            renderer?.orientation = orientation
+            drawable?.orientation = orientation
         }
     }
     #else
-    weak var renderer: NetStreamRenderer?
+    weak var drawable: NetStreamDrawable?
     #endif
 
     var formatDescription: CMVideoFormatDescription? {
@@ -83,7 +83,7 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
             guard
                 let device: AVCaptureDevice = (input as? AVCaptureDeviceInput)?.device,
                 let data = device.actualFPS(fps) else {
-                    return
+                return
             }
 
             fps = data.fps
@@ -122,7 +122,7 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
 
     var orientation: AVCaptureVideoOrientation = .portrait {
         didSet {
-            renderer?.orientation = orientation
+            drawable?.orientation = orientation
             guard orientation != oldValue else {
                 return
             }
@@ -154,9 +154,9 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
             }
             let focusMode: AVCaptureDevice.FocusMode = continuousAutofocus ? .continuousAutoFocus : .autoFocus
             guard let device: AVCaptureDevice = (input as? AVCaptureDeviceInput)?.device,
-                device.isFocusModeSupported(focusMode) else {
-                    logger.warn("focusMode(\(focusMode.rawValue)) is not supported")
-                    return
+                  device.isFocusModeSupported(focusMode) else {
+                logger.warn("focusMode(\(focusMode.rawValue)) is not supported")
+                return
             }
             do {
                 try device.lockForConfiguration()
@@ -174,7 +174,7 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
                 let device: AVCaptureDevice = (input as? AVCaptureDeviceInput)?.device,
                 let point: CGPoint = focusPointOfInterest,
                 device.isFocusPointOfInterestSupported else {
-                    return
+                return
             }
             do {
                 try device.lockForConfiguration()
@@ -193,7 +193,7 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
                 let device: AVCaptureDevice = (input as? AVCaptureDeviceInput)?.device,
                 let point: CGPoint = exposurePointOfInterest,
                 device.isExposurePointOfInterestSupported else {
-                    return
+                return
             }
             do {
                 try device.lockForConfiguration()
@@ -213,9 +213,9 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
             }
             let exposureMode: AVCaptureDevice.ExposureMode = continuousExposure ? .continuousAutoExposure : .autoExpose
             guard let device: AVCaptureDevice = (input as? AVCaptureDeviceInput)?.device,
-                device.isExposureModeSupported(exposureMode) else {
-                    logger.warn("exposureMode(\(exposureMode.rawValue)) is not supported")
-                    return
+                  device.isExposureModeSupported(exposureMode) else {
+                logger.warn("exposureMode(\(exposureMode.rawValue)) is not supported")
+                return
             }
             do {
                 try device.lockForConfiguration()
@@ -292,10 +292,10 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
 
     deinit {
         if Thread.isMainThread {
-            self.renderer?.attachStream(nil)
+            self.drawable?.attachStream(nil)
         } else {
             DispatchQueue.main.sync {
-                self.renderer?.attachStream(nil)
+                self.drawable?.attachStream(nil)
             }
         }
         #if os(iOS) || os(macOS)
@@ -320,9 +320,12 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
 
         output = nil
         guard let camera: AVCaptureDevice = camera else {
+            mixer.mediaSync = .passthrough
             input = nil
             return
         }
+
+        mixer.mediaSync = .video
         #if os(iOS)
         screen = nil
         #endif
@@ -346,7 +349,7 @@ final class AVVideoIOUnit: NSObject, AVIOUnit {
 
         fps *= 1
         position = camera.position
-        renderer?.position = camera.position
+        drawable?.position = camera.position
     }
 
     func setTorchMode(_ torchMode: AVCaptureDevice.TorchMode) {
@@ -400,7 +403,7 @@ extension AVVideoIOUnit {
             }
         }
 
-        if renderer != nil || !effects.isEmpty {
+        if drawable != nil || !effects.isEmpty {
             let image: CIImage = effect(buffer, info: sampleBuffer)
             extent = image.extent
             if !effects.isEmpty {
@@ -416,7 +419,7 @@ extension AVVideoIOUnit {
                 }
                 context?.render(image, to: imageBuffer ?? buffer)
             }
-            renderer?.enqueue(sampleBuffer)
+            drawable?.enqueue(sampleBuffer)
         }
 
         encoder.encodeImageBuffer(
@@ -436,13 +439,16 @@ extension AVVideoIOUnit {
 
     func stopDecoding() {
         decoder.stopRunning()
-        renderer?.enqueue(nil)
+        drawable?.enqueue(nil)
     }
 }
 
 extension AVVideoIOUnit: AVCaptureVideoDataOutputSampleBufferDelegate {
     // MARK: AVCaptureVideoDataOutputSampleBufferDelegate
     func captureOutput(_ captureOutput: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
+        guard mixer?.useSampleBuffer(sampleBuffer: sampleBuffer, mediaType: AVMediaType.video) == true else {
+            return
+        }
         #if os(macOS)
         if connection.isVideoMirrored {
             sampleBuffer.reflectHorizontal()
@@ -455,6 +461,6 @@ extension AVVideoIOUnit: AVCaptureVideoDataOutputSampleBufferDelegate {
 extension AVVideoIOUnit: VideoDecoderDelegate {
     // MARK: VideoDecoderDelegate
     func sampleOutput(video sampleBuffer: CMSampleBuffer) {
-        renderer?.enqueue(sampleBuffer)
+        drawable?.enqueue(sampleBuffer)
     }
 }

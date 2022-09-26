@@ -48,13 +48,7 @@ class ProgramSpecific: PSIPointer, PSITableHeader, PSITableSyntax {
     var currentNextIndicator = true
     var sectionNumber: UInt8 = 0
     var lastSectionNumber: UInt8 = 0
-    var tableData: Data {
-        get {
-            Data()
-        }
-        set {
-        }
-    }
+    var tableData: Data = .init()
     var crc32: UInt32 = 0
 
     init() {
@@ -87,7 +81,7 @@ extension ProgramSpecific: DataConvertible {
                     (sectionSyntaxIndicator ? 0x8000 : 0) |
                         (privateBit ? 0x4000 : 0) |
                         UInt16(ProgramSpecific.reservedBits) << 12 |
-                    sectionLength
+                        sectionLength
                 )
                 .writeUInt16(tableIDExtension)
                 .writeUInt8(
@@ -200,7 +194,7 @@ final class ProgramMapSpecific: ProgramSpecific {
                 PCRPID = try buffer.readUInt16() & 0x1fff
                 programInfoLength = try buffer.readUInt16() & 0x03ff
                 buffer.position += Int(programInfoLength)
-                var position: Int = 0
+                var position = 0
                 while 0 < buffer.bytesAvailable {
                     position = buffer.position
                     guard let data = ElementaryStreamSpecificData(try buffer.readBytes(buffer.bytesAvailable)) else {

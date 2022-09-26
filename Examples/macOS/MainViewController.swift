@@ -45,6 +45,7 @@ final class MainViewController: NSViewController {
         lfView?.attachStream(rtmpStream)
     }
 
+    // swiftlint:disable block_based_kvo
     override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
         guard let keyPath: String = keyPath, Thread.isMainThread else {
             return
@@ -63,11 +64,11 @@ final class MainViewController: NSViewController {
             sender.title = "Stop"
 
             // Optional. If you don't specify; the frame size will be the current H264Encoder default of 480x272
-//            rtmpStream.videoSettings = [
-//                .profileLevel: kVTProfileLevel_H264_High_AutoLevel,
-//                .width: 1920,
-//                .height: 1280,
-//            ]
+            //            rtmpStream.videoSettings = [
+            //                .profileLevel: kVTProfileLevel_H264_High_AutoLevel,
+            //                .width: 1920,
+            //                .height: 1280,
+            //            ]
 
             segmentedControl.isEnabled = false
             switch segmentedControl.selectedSegment {

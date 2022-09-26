@@ -1,37 +1,44 @@
 import AVFoundation
+import AVKit
 import Foundation
 import HaishinKit
 import UIKit
 
-final class PlaybackViewController: UIViewController, HKPictureInPictureController {
+final class PlaybackViewController: UIViewController {
     private static let maxRetryCount: Int = 5
 
     @IBOutlet private weak var playbackButton: UIButton!
     private var rtmpConnection = RTMPConnection()
     private var rtmpStream: RTMPStream!
     private var retryCount: Int = 0
+    private var pictureInPictureController: AVPictureInPictureController?
 
     override func viewDidLoad() {
         super.viewDidLoad()
         rtmpStream = RTMPStream(connection: rtmpConnection)
-        let tapGesture = UITapGestureRecognizer(target: self, action: #selector(didTapped(_:)))
-        tapGesture.numberOfTapsRequired = 2
-        view.addGestureRecognizer(tapGesture)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         logger.info("viewWillAppear")
         super.viewWillAppear(animated)
         (view as? MTHKView)?.attachStream(rtmpStream)
+        (view as? PiPHKView)?.attachStream(rtmpStream)
         NotificationCenter.default.addObserver(self, selector: #selector(didInterruptionNotification(_:)), name: AVAudioSession.interruptionNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(didRouteChangeNotification(_:)), name: AVAudioSession.routeChangeNotification, object: nil)
+        if let layer = view.layer as? AVSampleBufferDisplayLayer, #available(iOS 15.0, *) {
+            pictureInPictureController = AVPictureInPictureController(contentSource: .init(sampleBufferDisplayLayer: layer, playbackDelegate: self))
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         logger.info("viewWillDisappear")
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
-        NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
+        // swiftlint:disable notification_center_detachment
+        NotificationCenter.default.removeObserver(self)
         super.viewWillDisappear(animated)
+    }
+
+    @IBAction func didEnterPixtureInPicture(_ button: UIButton) {
+        pictureInPictureController?.startPictureInPicture()
     }
 
     @IBAction func didPlaybackButtonTap(_ button: UIButton) {
@@ -75,17 +82,6 @@ final class PlaybackViewController: UIViewController, HKPictureInPictureControll
     }
 
     @objc
-    private func didTapped(_ sender: UITapGestureRecognizer) {
-        if isPictureInPictureActive {
-            stopPictureInPicture()
-            playbackButton.isHidden = false
-        } else {
-            startPictureInPicture()
-            playbackButton.isHidden = true
-        }
-    }
-
-    @objc
     private func rtmpErrorHandler(_ notification: Notification) {
         logger.error(notification)
         rtmpConnection.connect(Preference.defaultInstance.uri!)
@@ -93,21 +89,48 @@ final class PlaybackViewController: UIViewController, HKPictureInPictureControll
 
     @objc
     private func didEnterBackground(_ notification: Notification) {
-        rtmpStream.receiveVideo = false
+        logger.info(notification)
+        if pictureInPictureController?.isPictureInPictureActive == false {
+            rtmpStream.receiveVideo = false
+        }
     }
 
     @objc
     private func didBecomeActive(_ notification: Notification) {
-        rtmpStream.receiveVideo = true
+        logger.info(notification)
+        if pictureInPictureController?.isPictureInPictureActive == false {
+            rtmpStream.receiveVideo = true
+        }
     }
 
     @objc
     private func didInterruptionNotification(_ notification: Notification) {
-        logger.info("didInterruptionNotification")
+        logger.info(notification)
     }
 
     @objc
     private func didRouteChangeNotification(_ notification: Notification) {
-        logger.info("didRouteChangeNotification")
+        logger.info(notification)
+    }
+}
+
+extension PlaybackViewController: AVPictureInPictureSampleBufferPlaybackDelegate {
+    // MARK: AVPictureInPictureControllerDelegate
+    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, setPlaying playing: Bool) {
+    }
+
+    func pictureInPictureControllerTimeRangeForPlayback(_ pictureInPictureController: AVPictureInPictureController) -> CMTimeRange {
+        return CMTimeRange(start: .zero, duration: .positiveInfinity)
+    }
+
+    func pictureInPictureControllerIsPlaybackPaused(_ pictureInPictureController: AVPictureInPictureController) -> Bool {
+        return false
+    }
+
+    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, didTransitionToRenderSize newRenderSize: CMVideoDimensions) {
+    }
+
+    func pictureInPictureController(_ pictureInPictureController: AVPictureInPictureController, skipByInterval skipInterval: CMTime, completion completionHandler: @escaping () -> Void) {
+        completionHandler()
     }
 }

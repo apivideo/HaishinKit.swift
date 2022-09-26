@@ -1,27 +1,21 @@
 import Foundation
 
-/**
- flash.events.IEventDispatcher for Swift
- */
-public protocol IEventDispatcher: AnyObject {
+/// The EventDispatcherConvertible interface is in implementation which supports the DOM Event Model.
+public protocol EventDispatcherConvertible: AnyObject {
+    /// Registers the event listeners on the event target.
     func addEventListener(_ type: Event.Name, selector: Selector, observer: AnyObject?, useCapture: Bool)
+    /// Unregister the event listeners on the event target.
     func removeEventListener(_ type: Event.Name, selector: Selector, observer: AnyObject?, useCapture: Bool)
+    /// Dispatches the events into the implementations event model.
     func dispatch(event: Event)
+    /// Dispatches the events into the implementations event model.
     func dispatch(_ type: Event.Name, bubbles: Bool, data: Any?)
 }
 
-public enum EventPhase: UInt8 {
-    case capturing = 0
-    case atTarget = 1
-    case bubbling = 2
-    case dispose = 3
-}
-
 // MARK: -
-/**
- flash.events.Event for Swift
- */
+/// The Event interface is used to provide information.
 open class Event {
+    /// A structure that defines the name of an event.
     public struct Name: RawRepresentable, ExpressibleByStringLiteral {
         // swiftlint:disable nesting
         public typealias RawValue = String
@@ -53,11 +47,19 @@ open class Event {
         return event
     }
 
-    open fileprivate(set) var type: Name
-    open fileprivate(set) var bubbles: Bool
-    open fileprivate(set) var data: Any?
-    open fileprivate(set) var target: AnyObject?
+    /// The type represents the event name.
+    public fileprivate(set) var type: Name
 
+    /// The isBubbles indicates whether ot not an event is a bubbling event.
+    public fileprivate(set) var bubbles: Bool
+
+    /// The data indicates the to provide information.
+    public fileprivate(set) var data: Any?
+
+    /// The target indicates the [IEventDispatcher].
+    public fileprivate(set) var target: AnyObject?
+
+    /// Creates a new event.
     public init(type: Name, bubbles: Bool = false, data: Any? = nil) {
         self.type = type
         self.bubbles = bubbles
@@ -74,14 +76,16 @@ extension Event: CustomDebugStringConvertible {
 
 // MARK: -
 /**
- flash.events.EventDispatcher for Swift
+ * The EventDispatcher interface is in implementation which supports the DOM Event Model.
  */
-open class EventDispatcher: IEventDispatcher {
+open class EventDispatcher: EventDispatcherConvertible {
     private weak var target: AnyObject?
 
+    /// Creates a new event dispatcher.
     public init() {
     }
 
+    /// Creates a new event dispatcher to proxy target.
     public init(target: AnyObject) {
         self.target = target
     }
@@ -90,18 +94,21 @@ open class EventDispatcher: IEventDispatcher {
         target = nil
     }
 
+    /// Registers the event listeners on the event target.
     public func addEventListener(_ type: Event.Name, selector: Selector, observer: AnyObject? = nil, useCapture: Bool = false) {
         NotificationCenter.default.addObserver(
             observer ?? target ?? self, selector: selector, name: Notification.Name(rawValue: "\(type.rawValue)/\(useCapture)"), object: target ?? self
         )
     }
 
+    /// Unregister the event listeners on the event target.
     public func removeEventListener(_ type: Event.Name, selector: Selector, observer: AnyObject? = nil, useCapture: Bool = false) {
         NotificationCenter.default.removeObserver(
             observer ?? target ?? self, name: Notification.Name(rawValue: "\(type.rawValue)/\(useCapture)"), object: target ?? self
         )
     }
 
+    /// Dispatches the events into the implementations event model.
     open func dispatch(event: Event) {
         event.target = target ?? self
         NotificationCenter.default.post(
@@ -110,6 +117,7 @@ open class EventDispatcher: IEventDispatcher {
         event.target = nil
     }
 
+    /// Dispatches the events into the implementations event model.
     public func dispatch(_ type: Event.Name, bubbles: Bool, data: Any?) {
         dispatch(event: Event(type: type, bubbles: bubbles, data: data))
     }

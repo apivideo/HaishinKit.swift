@@ -1,28 +1,19 @@
 import Foundation
 
-/**
- The singleton ASUndefined object.
- */
+/// The singleton ASUndefined object.
 public let kASUndefined = ASUndefined()
 
-/**
- The ASObject class represents an object for AcrionScript.
- */
+/// The ASObject class represents an object for AcrionScript.
 public typealias ASObject = [String: Any?]
 
-/**
- The ASUndefined class represents an undefined for ActionScript.
- */
-public final class ASUndefined: NSObject {
-    override public var description: String {
+/// The ASUndefined class represents an undefined for ActionScript.
+public struct ASUndefined: CustomStringConvertible {
+    public var description: String {
         "undefined"
-    }
-
-    override fileprivate init() {
-        super.init()
     }
 }
 
+/// The ASTypedObject class represents a typed object for ActionScript.
 public struct ASTypedObject {
     public typealias TypedObjectDecoder = (_ type: String, _ data: ASObject) throws -> Any
 
@@ -53,21 +44,22 @@ public struct ASTypedObject {
 }
 
 // MARK: -
-/**
- The ASArray class represents an array value for ActionScript.
- */
+/// The ASArray class represents an array value for ActionScript.
 public struct ASArray {
     private(set) var data: [Any?]
     private(set) var dict: [String: Any?] = [:]
 
+    /// The length of an array.
     public var length: Int {
         data.count
     }
 
+    /// Creates a new instance containing the specified number of a single.
     public init(count: Int) {
         self.data = [Any?](repeating: kASUndefined, count: count)
     }
 
+    /// Creates a new instance of data.
     public init(data: [Any?]) {
         self.data = data
     }
@@ -79,6 +71,7 @@ extension ASArray: ExpressibleByArrayLiteral {
         self = ASArray(data: elements)
     }
 
+    /// Accesses the element at the specified position.
     public subscript(i: Any) -> Any? {
         get {
             if let i: Int = i as? Int {
@@ -128,39 +121,48 @@ extension ASArray: Equatable {
 }
 
 // MARK: -
-/**
- ActionScript 1.0 and 2.0 and flash.xml.XMLDocument in ActionScript 3.0
-
- - seealso:
-   - 2.17 XML Document Type (amf0-file-format-specification.pdf)
-   - 3.9 XMLDocument type (amf-file-format-spec.pdf)
- */
-public final class ASXMLDocument: NSObject {
-    override public var description: String {
+// ActionScript 1.0 and 2.0 and flash.xml.XMLDocument in ActionScript 3.0
+/// - seealso: 2.17 XML Document Type (amf0-file-format-specification.pdf)
+/// - seealso: 3.9 XMLDocument type (amf-file-format-spec.pdf)
+public struct ASXMLDocument: CustomStringConvertible {
+    public var description: String {
         data
     }
 
-    private var data: String
+    private let data: String
 
+    /// Creates a new instance of string.
     public init(data: String) {
         self.data = data
     }
 }
 
+extension ASXMLDocument: Equatable {
+    // MARK: Equatable
+    public static func == (lhs: ASXMLDocument, rhs: ASXMLDocument) -> Bool {
+        (lhs.description == rhs.description)
+    }
+}
+
 // MARK: -
-/**
- ActionScript 3.0 introduces a new XML type.
- 
- - seealso: 3.13 XML type (amf-file-format-spec.pdf)
- */
-public final class ASXML: NSObject {
-    override public var description: String {
+/// ActionScript 3.0 introduces a new XML type.
+/// - seealso: 3.13 XML type (amf-file-format-spec.pdf)
+public struct ASXML: CustomStringConvertible {
+    public var description: String {
         data
     }
 
-    private var data: String
+    private let data: String
 
+    /// Creates a new instance of string.
     public init(data: String) {
         self.data = data
+    }
+}
+
+extension ASXML: Equatable {
+    // MARK: Equatable
+    public static func == (lhs: ASXML, rhs: ASXML) -> Bool {
+        (lhs.description == rhs.description)
     }
 }

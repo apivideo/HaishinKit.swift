@@ -3,28 +3,36 @@
 import AVFoundation
 import UIKit
 
-open class HKView: UIView {
+/**
+ * A view that displays a video content of a NetStream object which uses AVCaptureVideoPreviewLayer.
+ */
+public class HKView: UIView {
+    /// The view’s background color.
     public static var defaultBackgroundColor: UIColor = .black
 
-    override open class var layerClass: AnyClass {
+    /// Returns the class used to create the layer for instances of this class.
+    override public class var layerClass: AnyClass {
         AVCaptureVideoPreviewLayer.self
     }
 
-    override open var layer: AVCaptureVideoPreviewLayer {
+    /// The view’s Core Animation layer used for rendering.
+    override public var layer: AVCaptureVideoPreviewLayer {
         super.layer as! AVCaptureVideoPreviewLayer
     }
 
+    /// A value that specifies how the video is displayed within a player layer’s bounds.
     public var videoGravity: AVLayerVideoGravity = .resizeAspect {
         didSet {
             layer.videoGravity = videoGravity
         }
     }
 
+    /// A value that displays a video format.
     public var videoFormatDescription: CMVideoFormatDescription? {
         currentStream?.mixer.videoIO.formatDescription
     }
 
-    var orientation: AVCaptureVideoOrientation = .portrait {
+    public var orientation: AVCaptureVideoOrientation = .portrait {
         didSet {
             let orientationChange = { [weak self] in
                 guard let self = self else {
@@ -45,9 +53,9 @@ open class HKView: UIView {
             }
         }
     }
-    var position: AVCaptureDevice.Position = .front
+    public var position: AVCaptureDevice.Position = .front
     public var newSampleBuffer: ((_ currentSampleBuffer: CMSampleBuffer)->())? = nil
-    var currentSampleBuffer: CMSampleBuffer? {
+    private var currentSampleBuffer: CMSampleBuffer? {
        didSet {
            if let currentSampleBuffer = currentSampleBuffer {
                newSampleBuffer?(currentSampleBuffer)
@@ -57,15 +65,17 @@ open class HKView: UIView {
 
     private weak var currentStream: NetStream? {
         didSet {
-            oldValue?.mixer.videoIO.renderer = nil
+            oldValue?.mixer.videoIO.drawable = nil
         }
     }
 
+    /// Initializes and returns a newly allocated view object with the specified frame rectangle.
     override public init(frame: CGRect) {
         super.init(frame: frame)
         awakeFromNib()
     }
 
+    /// Returns an object initialized from data in a given unarchiver.
     public required init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
     }
@@ -74,13 +84,17 @@ open class HKView: UIView {
         attachStream(nil)
     }
 
-    override open func awakeFromNib() {
+    /// Prepares the receiver for service after it has been loaded from an Interface Builder archive, or nib file.
+    override public func awakeFromNib() {
         super.awakeFromNib()
         backgroundColor = HKView.defaultBackgroundColor
         layer.backgroundColor = HKView.defaultBackgroundColor.cgColor
     }
+}
 
-    open func attachStream(_ stream: NetStream?) {
+extension HKView: NetStreamDrawable {
+    // MARK: NetStreamDrawable
+    public func attachStream(_ stream: NetStream?) {
         guard let stream: NetStream = stream else {
             layer.session?.stopRunning()
             layer.session = nil
@@ -94,15 +108,12 @@ open class HKView: UIView {
         stream.mixer.session.commitConfiguration()
 
         stream.lockQueue.async {
-            stream.mixer.videoIO.renderer = self
+            stream.mixer.videoIO.drawable = self
             self.currentStream = stream
             stream.mixer.startRunning()
         }
     }
-}
 
-extension HKView: NetStreamRenderer {
-    // MARK: NetStreamRenderer
     func enqueue(_ sampleBuffer: CMSampleBuffer?) {
         currentSampleBuffer = sampleBuffer
     }

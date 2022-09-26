@@ -69,12 +69,12 @@ final class H264Decoder {
                     decompressionOutputRefCon: Unmanaged.passUnretained(self).toOpaque()
                 )
                 guard VTDecompressionSessionCreate(
-                    allocator: kCFAllocatorDefault,
-                    formatDescription: formatDescription,
-                    decoderSpecification: nil,
-                    imageBufferAttributes: attributes as CFDictionary?,
-                    outputCallback: &record,
-                    decompressionSessionOut: &_session ) == noErr else {
+                        allocator: kCFAllocatorDefault,
+                        formatDescription: formatDescription,
+                        decoderSpecification: nil,
+                        imageBufferAttributes: attributes as CFDictionary?,
+                        outputCallback: &record,
+                        decompressionSessionOut: &_session ) == noErr else {
                     return nil
                 }
                 invalidateSession = false
@@ -168,7 +168,7 @@ final class H264Decoder {
         guard
             let userInfo: [AnyHashable: Any] = notification.userInfo,
             let value: NSNumber = userInfo[AVAudioSessionInterruptionTypeKey] as? NSNumber,
-            let type: AVAudioSession.InterruptionType = AVAudioSession.InterruptionType(rawValue: value.uintValue) else {
+            let type = AVAudioSession.InterruptionType(rawValue: value.uintValue) else {
             return
         }
         switch type {

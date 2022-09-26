@@ -11,6 +11,8 @@ open class HTTPStream: NetStream {
             tsWriter.expectedMedias = newValue
         }
     }
+
+    /// The name of stream.
     private(set) var name: String?
     private lazy var tsWriter = TSFileWriter()
 
@@ -18,17 +20,11 @@ open class HTTPStream: NetStream {
         lockQueue.async {
             if name == nil {
                 self.name = name
-                #if os(iOS)
-                self.mixer.videoIO.screen?.stopRunning()
-                #endif
                 self.mixer.stopEncoding()
                 self.tsWriter.stopRunning()
                 return
             }
             self.name = name
-            #if os(iOS)
-            self.mixer.videoIO.screen?.startRunning()
-            #endif
             self.mixer.startEncoding(delegate: self.tsWriter)
             self.mixer.startRunning()
             self.tsWriter.startRunning()
